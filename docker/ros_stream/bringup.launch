@@ -1,0 +1,28 @@
+<launch>
+  <arg name="image"         default="/usb_cam/image_raw" />
+  <arg name="camera_info"   default="/usb_cam/camera_info" />
+
+  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+    <param name="video_device" value="/dev/video0" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+    <param name="io_method" value="mmap"/>
+
+    <remap from="~image_raw"    to="$(arg image)"/>
+    <remap from="~camera_info"  to="$(arg camera_info)"/>
+  </node>
+
+  <node name="web_video_server" pkg="web_video_server" type="web_video_server" output="screen" >
+    <!-- <param name="quality" value="30"/> -->
+    <!-- <param name="port" value="8080" /> -->
+    <!-- <param name="address" value="0.0.0.0" /> -->
+    <!-- <param name="server_threads" value=1 /> -->
+    <!-- <param name="ros_threads" value=1 /> -->
+    <!-- <param name="height" value=480 /> -->
+    <!-- <param name="width" value=640 /> -->
+    <!-- <param name="invert" value=false /> -->
+  </node>
+
+</launch>
