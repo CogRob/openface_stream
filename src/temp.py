@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
+import argparse
 import cv2
 import Image
 import threading
 import time
 import StringIO
+import sys
 
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from SocketServer import ThreadingMixIn
@@ -20,7 +22,7 @@ def receiving(capture):
         rc,last_received = capture.retrieve()
 
 class StreamHandler(BaseHTTPRequestHandler):
-
+    """Handle stream connection."""
     def mjpg_cb(self):
         self.send_response(200)
         self.send_header('Pragma:', 'no-cache')
@@ -49,33 +51,55 @@ class StreamHandler(BaseHTTPRequestHandler):
             except KeyboardInterrupt:
                 break
 
-    def html_cb(self):
-        self.send_response(200)
-        self.send_header('Content-type','text/html')
-        self.end_headers()
-        self.wfile.write('<html><head></head><body>')
-        self.wfile.write('<img src="http://127.0.0.1:8081/cam.mjpg"/>')
-        self.wfile.write('</body></html>')
-
     def do_GET(self):
         if self.path.endswith('.mjpg'):
             self.mjpg_cb()
-        if self.path.endswith('.html'):
-            self.html_cb()
-
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
-def main():
+class ArgParser(argparse.ArgumentParser):
+    """Argument parser class"""
+
+    def set(self):
+        """Setup parser for sroscore"""
+
+        self.add_argument(
+            '-i', '--input',
+            action='store',
+            default="http://172.17.0.1:8080/stream?topic=/usb_cam/image_raw",
+            help='path to input video (URL_STEAM|FILE_PATH)')
+        self.add_argument(
+            '-p', '--port',
+            action='store',
+            type=int,
+            default=8081,
+            help='path to input video (URL_STEAM|FILE_PATH)')
+        self.add_argument(
+            '-a', '--address',
+            action='store',
+            default="localhost",
+            help='path to input video (URL_STEAM|FILE_PATH)')
+        self.add_argument(
+            '--version',
+            action='version',
+            version='%(prog)s 0.0')
+
+def main(argv = sys.argv):
+    arg_parser = ArgParser(
+        prog='openface_streamer',
+        description='OpenFace Streamer')
+    arg_parser.set()
+    args, argv = arg_parser.parse_known_args(argv)
+
     global capture
-    capture = cv2.VideoCapture('http://172.17.0.1:8080/stream?topic=/usb_cam/image_raw')
-    global img
+    capture = cv2.VideoCapture(args.input)
     try:
-        server = ThreadedHTTPServer(('localhost', 8081), StreamHandler)
+        server = ThreadedHTTPServer((args.address, args.port), StreamHandler)
         print "server started"
         t = threading.Thread(target=receiving, args=(capture,))
         t.start()
+        print "capture started"
         server.serve_forever()
     except KeyboardInterrupt:
         capture.release()
