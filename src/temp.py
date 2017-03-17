@@ -9,17 +9,33 @@ import StringIO
 import time
 capture=None
 
+last_received = None # Global for latest recived line
+
+def receiving(capture):
+    global last_received
+
+    t = threading.currentThread() # Get current thread running function
+    while getattr(t, "do_receive", True): # Watch for a stop signal
+        retval = capture.grab()
+        rc,last_received = capture.retrieve()
+
 class CamHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.endswith('.mjpg'):
             self.send_response(200)
+            self.send_header('Pragma:', 'no-cache')
+            self.send_header('Cache-Control:', 'no-cache')
+            self.send_header('Content-Encoding:', 'identify')
             self.send_header('Content-type','multipart/x-mixed-replace; boundary=--jpgboundary')
             self.end_headers()
             while True:
                 try:
-                    rc,img = capture.read()
-                    if not rc:
-                        continue
+                    # rc,img = capture.read()
+                    # retval = capture.grab()
+                    # rc,img = capture.retrieve()
+                    # if not rc:
+                        # continue
+                    img = last_received
                     imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
                     jpg = Image.fromarray(imgRGB)
                     tmpFile = StringIO.StringIO()
@@ -49,6 +65,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 def main():
     global capture
     capture = cv2.VideoCapture('http://172.17.0.1:8080/stream?topic=/usb_cam/image_raw')
+    # capture.set(cv2.CAP_PROP_BUFFERSIZE, 3)
     # capture = cv2.VideoCapture(0)
     # capture.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 320);
     # capture.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 240);
@@ -57,10 +74,14 @@ def main():
     try:
         server = ThreadedHTTPServer(('localhost', 8081), CamHandler)
         print "server started"
+        t = threading.Thread(target=receiving, args=(capture,))
+        t.start()
         server.serve_forever()
     except KeyboardInterrupt:
         capture.release()
         server.socket.close()
+        t.do_receive = False
+        t.join()
 
 if __name__ == '__main__':
     main()
