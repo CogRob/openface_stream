@@ -8,8 +8,7 @@ import time
 import StringIO
 import sys
 
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
-from SocketServer import ThreadingMixIn
+from flask import Flask, render_template, Response
 
 capture = None # Global for capture device
 last_received = None # Global for latest recived line
@@ -20,43 +19,6 @@ def receiving(capture):
     while getattr(t, "do_receive", True): # Watch for a stop signal
         retval = capture.grab()
         rc,last_received = capture.retrieve()
-
-class StreamHandler(BaseHTTPRequestHandler):
-    """Handle stream connection."""
-    def mjpg_cb(self):
-        self.send_response(200)
-        self.send_header('Pragma:', 'no-cache')
-        self.send_header('Cache-Control:', 'no-cache')
-        self.send_header('Content-Encoding:', 'identify')
-        self.send_header('Content-type','multipart/x-mixed-replace; boundary=--jpgboundary')
-        self.end_headers()
-        while True:
-            try:
-                # rc,img = capture.read()
-                # retval = capture.grab()
-                # rc,img = capture.retrieve()
-                # if not rc:
-                #     continue
-                img = last_received
-                imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-                jpg = Image.fromarray(imgRGB)
-                tmpFile = StringIO.StringIO()
-                jpg.save(tmpFile,'JPEG')
-                self.wfile.write("--jpgboundary")
-                self.send_header('Content-type','image/jpeg')
-                self.send_header('Content-length',str(tmpFile.len))
-                self.end_headers()
-                jpg.save(self.wfile,'JPEG')
-                time.sleep(0.05)
-            except KeyboardInterrupt:
-                break
-
-    def do_GET(self):
-        if self.path.endswith('.mjpg'):
-            self.mjpg_cb()
-
-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """Handle requests in a separate thread."""
 
 class ArgParser(argparse.ArgumentParser):
     """Argument parser class"""
@@ -85,6 +47,28 @@ class ArgParser(argparse.ArgumentParser):
             action='version',
             version='%(prog)s 0.0')
 
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+def gen():
+    while True:
+        try:
+            ret, jpeg = cv2.imencode('.jpg', last_received)
+            frame = jpeg.tobytes()
+            time.sleep(0.05)
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+        except KeyboardInterrupt:
+            break
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 def main(argv = sys.argv):
     arg_parser = ArgParser(
         prog='openface_streamer',
@@ -95,15 +79,13 @@ def main(argv = sys.argv):
     global capture
     capture = cv2.VideoCapture(args.input)
     try:
-        server = ThreadedHTTPServer((args.address, args.port), StreamHandler)
         print "server started"
         t = threading.Thread(target=receiving, args=(capture,))
         t.start()
         print "capture started"
-        server.serve_forever()
+        app.run(host='0.0.0.0', debug=True)
     except KeyboardInterrupt:
         capture.release()
-        server.socket.close()
         t.do_receive = False
         t.join()
 
