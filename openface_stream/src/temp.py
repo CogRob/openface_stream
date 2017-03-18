@@ -79,7 +79,7 @@ class ArgParser(argparse.ArgumentParser):
         self.add_argument(
             '-a', '--address',
             action='store',
-            default=os.environ.get('OSTREAM_ADDRESS', "localhost"),
+            default=os.environ.get('OSTREAM_ADDRESS', "0.0.0.0"),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '--version',

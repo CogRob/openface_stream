@@ -13,18 +13,12 @@ services:
       context: openface_stream
     environment:
       ISTREAM_PATH: http://ros_stream:8080/stream?topic=/usb_cam/image_raw
-      OSTREAM_ADDRESS: localhost
-      OSTREAM_PORT: 8081
+      OSTREAM_ADDRESS: 0.0.0.0
+      OSTREAM_PORT: 8080
     command: src/temp.py
-    # command: bash -c "ping ros_stream > /dev/null"
 
   resolvable:
     image: mgood/resolvable
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock
       - /etc/resolv.conf:/tmp/resolv.conf
-
-# networks:
-#   default:
-#     # Use a custom driver
-#     driver: custom-driver-1
