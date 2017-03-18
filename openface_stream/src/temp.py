@@ -3,6 +3,7 @@
 import argparse
 import cv2
 import Image
+import os
 import threading
 import time
 import StringIO
@@ -67,18 +68,18 @@ class ArgParser(argparse.ArgumentParser):
         self.add_argument(
             '-i', '--input',
             action='store',
-            default="http://172.17.0.1:8080/stream?topic=/usb_cam/image_raw",
+            default=os.environ.get('ISTREAM_PATH', None),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '-p', '--port',
             action='store',
             type=int,
-            default=8081,
+            default=os.environ.get('OSTREAM_PORT', 8080),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '-a', '--address',
             action='store',
-            default="localhost",
+            default=os.environ.get('OSTREAM_ADDRESS', "localhost"),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '--version',
@@ -92,8 +93,21 @@ def main(argv = sys.argv):
     arg_parser.set()
     args, argv = arg_parser.parse_known_args(argv)
 
+    print(args)
+
     global capture
-    capture = cv2.VideoCapture(args.input)
+    img = None
+    while img is None:
+        try:
+            capture = cv2.VideoCapture(args.input)
+            rc,img = capture.read()
+            assert(not img is None)
+            # print(rc)
+            # print(img)
+            # break
+        except:
+            time.sleep(0.1)
+            print("capture connecting")
     try:
         server = ThreadedHTTPServer((args.address, args.port), StreamHandler)
         print "server started"
