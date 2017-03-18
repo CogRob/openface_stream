@@ -130,7 +130,7 @@ class OpenFaceAnnotater:
             ]
             self.svm = GridSearchCV(SVC(C=1), param_grid, cv=5).fit(X, y)
 
-    def processFrame(self, img):
+    def processFrame(self, img, identity):
         result = {
             "training":self.training,
         }
@@ -203,6 +203,8 @@ class OpenFaceAnnotater:
 
             return result
 
+    def addPeople(imgs):
+
 
 if __name__ == '__main__':
     
@@ -213,6 +215,9 @@ if __name__ == '__main__':
     openface_annotator = OpenFaceAnnotater()
 
     openface_annotator.training = 0 #set using command line argument
+
+    #adds names for the people
+    openface_annotator.addPeople(imgs)
     
     for imgObject in imgs:
         print("=== {} ===".format(imgObject.path))
@@ -231,15 +236,18 @@ if __name__ == '__main__':
                     print("  + Unable to load.")
                 outRgb = None
             else:
-                #annotates the image
-                outRgb = openface_annotator.processFrame(rgb) #check the return type here
-                openface_annotator.trainSVM()
+                #processes the image and finds all the faces and stores the images in self.images
+                result = openface_annotator.processFrame(rgb) #check the return type here
+                if self.training:
+                    openface_annotator.trainSVM()
+                else:
+                    outRgb = result['annotatedFrame']
 
                 if outRgb is None and args.verbose:
                     print("  + Unable to align.")
 
-            if outRgb is not None:
-                if args.verbose:
-                    print("  + Writing aligned file to disk.")
+                if outRgb is not None:
+                    if args.verbose:
+                        print("  + Writing aligned file to disk.")
                 outBgr = cv2.cvtColor(outRgb, cv2.COLOR_RGB2BGR)
                 cv2.imwrite(imgName, outBgr)
