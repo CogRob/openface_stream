@@ -12,7 +12,7 @@ import sys
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from SocketServer import ThreadingMixIn
 
-from openface_healper import OpenFaceAnotater
+# from openface_healper import OpenFaceAnotater
 
 capture = None # Global for capture device
 last_received = None # Global for latest recived line
@@ -83,7 +83,7 @@ class StreamArgParser(argparse.ArgumentParser):
         self.add_argument(
             '-a', '--address',
             action='store',
-            default=os.environ.get('OSTREAM_ADDRESS', "0.0.0.0"),
+            default=os.environ.get('OSTREAM_ADDRESS', '0.0.0.0'),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '--version',
