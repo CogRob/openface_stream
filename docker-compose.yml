@@ -11,6 +11,9 @@ services:
   openface_stream:
     build:
       context: openface_stream
+    # image: ruffsl/openface:cuda
+    devices:
+      - /dev/nvidia0
     environment:
       ISTREAM_PATH: http://ros_stream:8080/stream?topic=/usb_cam/image_raw
       OSTREAM_ADDRESS: 0.0.0.0

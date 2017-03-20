@@ -1,0 +1,33 @@
+services:
+  openface_stream:
+    build:
+      context: openface_stream
+    command: src/temp.py
+    # command: sleep infinity
+    devices:
+    - /dev/nvidia0
+    - /dev/nvidia1
+    - /dev/nvidiactl
+    - /dev/nvidia-uvm
+    - /dev/nvidia-uvm-tools
+    environment:
+      ISTREAM_PATH: http://ros_stream:8080/stream?topic=/usb_cam/image_raw
+      OSTREAM_ADDRESS: 0.0.0.0
+      OSTREAM_PORT: 8080
+    volumes:
+    - nvidia_driver_367.57:/usr/local/nvidia:ro
+  resolvable:
+    image: mgood/resolvable
+    volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+    - /etc/resolv.conf:/tmp/resolv.conf
+  ros_stream:
+    build:
+      context: ros_stream
+    devices:
+      - "/dev/video0:/dev/video0"
+    command: roslaunch bringup.launch
+version: '3'
+volumes:
+  nvidia_driver_367.57:
+    external: true

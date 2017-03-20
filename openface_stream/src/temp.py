@@ -12,8 +12,11 @@ import sys
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from SocketServer import ThreadingMixIn
 
+from openface_healper import OpenFaceAnotater
+
 capture = None # Global for capture device
 last_received = None # Global for latest recived line
+openface_anotater = None
 
 def receiving(capture):
     global last_received
@@ -40,6 +43,7 @@ class StreamHandler(BaseHTTPRequestHandler):
                 #     continue
                 img = last_received
                 imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+                imgRGB = openface_anotater.predict(imgRGB, multiple=True)
                 jpg = Image.fromarray(imgRGB)
                 tmpFile = StringIO.StringIO()
                 jpg.save(tmpFile,'JPEG')
@@ -59,11 +63,11 @@ class StreamHandler(BaseHTTPRequestHandler):
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
-class ArgParser(argparse.ArgumentParser):
+class StreamArgParser(argparse.ArgumentParser):
     """Argument parser class"""
 
     def set(self):
-        """Setup parser for sroscore"""
+        """Setup parser"""
 
         self.add_argument(
             '-i', '--input',
@@ -79,7 +83,7 @@ class ArgParser(argparse.ArgumentParser):
         self.add_argument(
             '-a', '--address',
             action='store',
-            default=os.environ.get('OSTREAM_ADDRESS', "0.0.0.0"),
+            default=os.environ.get('OSTREAM_ADDRESS', '0.0.0.0'),
             help='path to input video (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '--version',
@@ -87,11 +91,14 @@ class ArgParser(argparse.ArgumentParser):
             version='%(prog)s 0.0')
 
 def main(argv = sys.argv):
-    arg_parser = ArgParser(
+    arg_parser = StreamArgParser(
         prog='openface_streamer',
         description='OpenFace Streamer')
     arg_parser.set()
     args, argv = arg_parser.parse_known_args(argv)
+
+    global openface_anotater
+    openface_anotater = OpenFaceAnotater(argv)
 
     print(args)
 
