@@ -112,7 +112,7 @@ class OpenFaceModel(Object):
         print (labels,labelsNum)
 
         for rep,label,labelnum in zip(features,labels,labelsNum):
-			predictions = clf.predict_proba(rep).ravel()
+		predictions = clf.predict_proba(rep).ravel()
 	        maxI = np.argmax(predictions)
 	        print ('predicted index = ',maxI)
 	        person = le.inverse_transform(maxI)
