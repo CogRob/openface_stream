@@ -1,4 +1,6 @@
-docker run \
+nvidia-docker run \
   -it \
-  --publish 8081:8081 \
-  cogrob/openface_stream src/temp.py
+  -v ~/Desktop/face_data:/root/face_data \
+  openfacestream_openface_stream bash -c "src/openface_trainer.py /root/face_data"
+
+  # openfacestream_openface_stream bash
