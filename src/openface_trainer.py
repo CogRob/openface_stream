@@ -109,6 +109,19 @@ class OpenFaceModel(Object):
 
         clf.fit(features,labelsNum)
 
+        print (labels,labelsNum)
+
+        for rep,label,labelnum in zip(features,labels,labelsNum):
+			predictions = clf.predict_proba(rep).ravel()
+	        maxI = np.argmax(predictions)
+	        print ('predicted index = ',maxI)
+	        person = le.inverse_transform(maxI)
+	        print ('predicted person = ',person)
+	        confidence = predictions[maxI]
+	        print ('confidence =',confidence)
+	        print ('actual index = ',labelnum)
+	        print ('actual person = ',label)
+
         fName = "{}/classifier.pkl".format(fileDir)
         print("Saving classifier to '{}'".format(fName))
         with open(fName, 'w') as f:
