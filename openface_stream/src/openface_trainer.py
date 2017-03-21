@@ -108,7 +108,7 @@ class OpenFaceModel(object):
         nClasses = len(le.classes_)
         print("Training for {} classes.".format(nClasses))
 
-        clf = SVC(C=1, kernel='linear', probability=True)
+        clf = SVC(C=1, kernel='linear')
 
         if args.ldaDim > 0:
             clf_final = clf
@@ -116,15 +116,9 @@ class OpenFaceModel(object):
 
         clf.fit(features,labelsNum)
 
-        for rep,label,labelnum in zip(features,labels,labelsNum):
-            predictions = clf.predict_proba(rep).ravel()
-            maxI = np.argmax(predictions)
-            print ('predicted index = ',maxI)
-            person = le.inverse_transform(maxI)
-            print ('predicted person = ',person)
-            confidence = predictions[maxI]
-            print ('confidence =',confidence)
-            print ('actual index = ',labelnum)
+        for rep,label in zip(features,labels):
+            predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
+            print ('predicted person = ',predicted_person[0])
             print ('actual person = ',label)
 
         fName = "{}/classifier.pkl".format(args.inputDir)

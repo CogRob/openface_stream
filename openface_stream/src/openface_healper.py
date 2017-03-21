@@ -126,21 +126,16 @@ class OpenFaceAnotater(object):
                 bb = r[2] #bounding box
                 landmarks = r[3] #landmarks
                 start = time.time()
-                predictions = self.clf.predict_proba(rep).ravel()
-                maxI = np.argmax(predictions)
-                person = self.le.inverse_transform(maxI)
-                confidence = predictions[maxI]
+                person = self.le.inverse_transform(self.clf.predict(rep.reshape(-1,1)))
                 if self.args.verbose:
                     print("Prediction took {} seconds.".format(time.time() - start))
                     if multiple:
-                        print("Predict {} @ x={} with {:.2f} confidence.".format(
+                        print("Predict {} @ x={}".format(
                             person,
-                            bbx,
-                            confidence))
+                            bbx))
                     else:
-                        print("Predict {} with {:.2f} confidence.".format(
-                            person,
-                            confidence))
+                        print("Predict {}".format(
+                            person))
                 if isinstance(self.clf, GMM):
                     dist = np.linalg.norm(rep - self.clf.means_[maxI])
                     if self.args.verbose:
