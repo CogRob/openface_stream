@@ -40,26 +40,36 @@ class OpenFaceArgParser(argparse.ArgumentParser):
             '--dlibFacePredictor',
             type=str,
             help="Path to dlib's face predictor.",
-            default=os.path.join(
-                dlibModelDir,
-                "shape_predictor_68_face_landmarks.dat"))
+            default=os.environ.get(
+                'DLIB_FACE_PREDICTOR_PATH',
+                 os.path.join(
+                    dlibModelDir,
+                    "shape_predictor_68_face_landmarks.dat")))
         self.add_argument(
             '--networkModel',
             type=str,
             help="Path to Torch network model.",
-            default=os.path.join(
-                openfaceModelDir,
-                'nn4.small2.v1.t7'))
+            default=os.environ.get(
+                'NETWORK_MODEL_PATH',
+                 os.path.join(
+                    openfaceModelDir,
+                    'nn4.small2.v1.t7')))
         self.add_argument(
             '--classifierModel',
             type=str,
             help="Path to Classifier Model.",
-            default=os.path.join('/root/openface_stream/src','celeb_img_trained.pkl'))
+            default=os.environ.get(
+                'CLASSIFIER_MODEL_PATH',
+                 os.path.join(
+                    '/root/openface_stream/src',
+                    'classifier.pkl')))
         self.add_argument(
             '--imgDim',
             type=int,
             help="Default image dimension.",
-            default=96)
+            default=os.environ.get(
+                'IMG_DIM',
+                 96))
         self.add_argument(
             '--cuda',
             action='store_true')
@@ -70,6 +80,7 @@ class OpenFaceArgParser(argparse.ArgumentParser):
 class OpenFaceAnotater(object):
 
     def __init__(self, argv):
+        start = time.time()
         self.arg_parser = OpenFaceArgParser(
             prog='openface',
             description='OpenFace')
@@ -106,9 +117,9 @@ class OpenFaceAnotater(object):
 
         try:
             reps = self.getRep(rgbImg, multiple)
-            print("reps: ", reps)
-            if len(reps) > 1:
-                print("List of faces in image from left to right")
+            # print("reps: ", reps)
+            # if len(reps) > 1:
+                # print("List of faces in image from left to right")
             for r in reps:
                 rep = r[1].reshape(1, -1)
                 bbx = r[0]
@@ -156,10 +167,13 @@ class OpenFaceAnotater(object):
         # print ('rgbimg shape:{}'.format(rgbImg.shape))
         start = time.time()
 
+        bwImg = cv2.cvtColor(rgbImg, cv2.COLOR_RGB2GRAY)
+
+
         if multiple:
-            bbs = self.align.getAllFaceBoundingBoxes(rgbImg)
+            bbs = self.align.getAllFaceBoundingBoxes(bwImg)
         else:
-            bb1 = self.align.getLargestFaceBoundingBox(rgbImg)
+            bb1 = self.align.getLargestFaceBoundingBox(bwImg)
             bbs = [bb1]
         if len(bbs) == 0 or (not multiple and bb1 is None):
             raise Exception("Unable to find a face")
@@ -175,7 +189,7 @@ class OpenFaceAnotater(object):
                 bb,
                 landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
 
-            print("alignedFace: ", alignedFace)
+            # print("alignedFace: ", alignedFace)
             if alignedFace is None:
                 raise Exception("Unable to align image")
             if self.args.verbose:
