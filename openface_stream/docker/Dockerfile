@@ -114,21 +114,21 @@ RUN luarocks install nn && \
 #     make install && \
 #     rm -rf ~/ocv-tmp
 
-RUN cd ~ && \
-    mkdir -p dlib-tmp && \
-    cd dlib-tmp && \
-    curl -L \
-         https://github.com/davisking/dlib/archive/v19.0.tar.gz \
-         -o dlib.tar.bz2 && \
-    tar xf dlib.tar.bz2 && \
-    cd dlib-19.0/python_examples && \
+WORKDIR /root/
+RUN git clone https://github.com/davisking/dlib.git && \
+    git checkout tags/v19.4 && \
+    cd dlib/python_examples && \
     mkdir build && \
     cd build && \
-    cmake ../../tools/python && \
-    cmake --build . --config Release && \
+    cmake \
+      -DUSE_AVX_INSTRUCTIONS=ON \
+      ../../tools/python && \
+    cmake \
+      --build . \
+      -j$(nproc) \
+      --config Release && \
     cp dlib.so /usr/local/lib/python2.7/dist-packages && \
     rm -rf ~/dlib-tmp
-
 
 WORKDIR /root
 RUN git clone https://github.com/cmusatyalab/openface.git && \

@@ -79,12 +79,12 @@ class StreamArgParser(argparse.ArgumentParser):
             action='store',
             type=int,
             default=os.environ.get('OSTREAM_PORT', 8080),
-            help='path to input video (URL_STEAM|FILE_PATH)')
+            help='port to output video stream (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '-a', '--address',
             action='store',
             default=os.environ.get('OSTREAM_ADDRESS', '0.0.0.0'),
-            help='path to input video (URL_STEAM|FILE_PATH)')
+            help='address to output video stream (URL_STEAM|FILE_PATH)')
         self.add_argument(
             '--version',
             action='version',

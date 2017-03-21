@@ -12,13 +12,14 @@ services:
     build:
       context: openface_stream
     # image: ruffsl/openface:cuda
-    devices:
-      - /dev/nvidia0
+    volumes:
+      - "~/Desktop/face_data:/root/data"
     environment:
       ISTREAM_PATH: http://ros_stream:8080/stream?topic=/usb_cam/image_raw
       OSTREAM_ADDRESS: 0.0.0.0
       OSTREAM_PORT: 8080
-    command: src/temp.py
+      CLASSIFIER_MODEL_PATH: /root/data/classifier.pkl
+    command: src/temp.py --cuda
 
   resolvable:
     image: mgood/resolvable
