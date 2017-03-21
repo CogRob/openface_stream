@@ -98,7 +98,7 @@ class OpenFaceModel(object):
 
     def train(self):
         '''Trains and saves classifier'''
-        print 'Start Training'
+        print 'Start Trainning'
         features,labels = self.get_data()
         print labels
         le = LabelEncoder().fit(labels)
@@ -115,6 +115,17 @@ class OpenFaceModel(object):
             clf = Pipeline([('lda', LDA(n_components=args.ldaDim)),('clf', clf_final)])
 
         clf.fit(features,labelsNum)
+
+        for rep,label,labelnum in zip(features,labels,labelsNum):
+            predictions = clf.predict_proba(rep).ravel()
+            maxI = np.argmax(predictions)
+            print ('predicted index = ',maxI)
+            person = le.inverse_transform(maxI)
+            print ('predicted person = ',person)
+            confidence = predictions[maxI]
+            print ('confidence =',confidence)
+            print ('actual index = ',labelnum)
+            print ('actual person = ',label)
 
         fName = "{}/classifier.pkl".format(args.inputDir)
         print("Saving classifier to '{}'".format(fName))
