@@ -126,7 +126,7 @@ class OpenFaceAnotater(object):
                 bb = r[2] #bounding box
                 landmarks = r[3] #landmarks
                 start = time.time()
-                person = self.le.inverse_transform(self.clf.predict(rep.reshape(-1,1)))
+                person = self.le.inverse_transform(self.clf.predict(rep))[0]
                 if self.args.verbose:
                     print("Prediction took {} seconds.".format(time.time() - start))
                     if multiple:
@@ -154,7 +154,7 @@ class OpenFaceAnotater(object):
             # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
             return annotatedImg
         except Exception as e:
-            # print str(e)
+            print str(e)
             return rgbImg
 
     def getRep(self, rgbImg, multiple=False):
