@@ -115,18 +115,17 @@ RUN luarocks install nn && \
 #     rm -rf ~/ocv-tmp
 
 WORKDIR /root/
-RUN git clone https://github.com/davisking/dlib.git && \
+RUN git clone https://github.com/davisking/dlib.git && cd dlib && \
     git checkout tags/v19.4 && \
-    cd dlib/python_examples && \
-    mkdir build && \
-    cd build && \
+    cd python_examples && \
+    mkdir build && cd build && \
     cmake \
       -DUSE_AVX_INSTRUCTIONS=ON \
       ../../tools/python && \
     cmake \
       --build . \
-      -j$(nproc) \
-      --config Release && \
+      --config Release \
+      -- -j $(nproc) && \
     cp dlib.so /usr/local/lib/python2.7/dist-packages && \
     rm -rf ~/dlib-tmp
 
