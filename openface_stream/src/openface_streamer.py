@@ -18,12 +18,17 @@ capture = None # Global for capture device
 last_received = None # Global for latest recived line
 openface_anotater = None
 
-def receiving(capture):
+def receiving(input, capture):
     global last_received
     t = threading.currentThread() # Get current thread running function
     while getattr(t, "do_receive", True): # Watch for a stop signal
-        retval = capture.grab()
-        rc,last_received = capture.retrieve()
+        try:
+            # retval = capture.grab()
+            rc, img = capture.read()
+            assert(img is not None)
+            last_received = img
+        except:
+            capture = connect(input)
 
 class StreamHandler(BaseHTTPRequestHandler):
     """Handle stream connection."""
@@ -90,6 +95,21 @@ class StreamArgParser(argparse.ArgumentParser):
             action='version',
             version='%(prog)s 0.0')
 
+def connect(input):
+    img = None
+    while img is None:
+        try:
+            capture = cv2.VideoCapture(input)
+            rc,img = capture.read()
+            assert(not img is None)
+            # print(rc)
+            # print(img)
+            # break
+        except:
+            time.sleep(0.1)
+            print("capture connecting")
+    return capture
+
 def main(argv = sys.argv):
     arg_parser = StreamArgParser(
         prog='openface_streamer',
@@ -103,22 +123,12 @@ def main(argv = sys.argv):
     print(args)
 
     global capture
-    img = None
-    while img is None:
-        try:
-            capture = cv2.VideoCapture(args.input)
-            rc,img = capture.read()
-            assert(not img is None)
-            # print(rc)
-            # print(img)
-            # break
-        except:
-            time.sleep(0.1)
-            print("capture connecting")
+    capture = connect(args.input)
+
     try:
         server = ThreadedHTTPServer((args.address, args.port), StreamHandler)
         print "server started"
-        t = threading.Thread(target=receiving, args=(capture,))
+        t = threading.Thread(target=receiving, args=(args.input, capture,))
         t.start()
         print "capture started"
         server.serve_forever()

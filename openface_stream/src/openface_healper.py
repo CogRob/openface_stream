@@ -175,7 +175,9 @@ class OpenFaceAnotater(object):
             bb1 = self.align.getLargestFaceBoundingBox(bwImg)
             bbs = [bb1]
         if len(bbs) == 0 or (not multiple and bb1 is None):
-            raise Exception("Unable to find a face")
+            if self.args.verbose:
+                print("Unable to find a face")
+            raise Exception()
         if self.args.verbose:
             print("Face detection took {} seconds.".format(time.time() - start))
 
