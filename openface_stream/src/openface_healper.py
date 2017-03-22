@@ -111,13 +111,13 @@ class OpenFaceAnotater(object):
         self.le = le
         self.clf = clf
 
-    def predict(self, rgbImg, multiple=False, scale=None):
+    def predict(self, rgbImg, multiple=False, scale=None, bbs=None):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
 
         try:
-            reps = self.getRep(rgbImg, multiple, scale)
+            reps = self.getRep(rgbImg, multiple, scale, bbs)
             # print("reps: ", reps)
             # if len(reps) > 1:
                 # print("List of faces in image from left to right")
@@ -153,12 +153,12 @@ class OpenFaceAnotater(object):
                                 cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75,
                                 color=(152, 255, 204), thickness=2)
             # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
-            return annotatedImg
+            return annotatedImg,bbs
         except Exception as e:
             print str(e)
             return rgbImg
 
-    def getRep(self, rgbImg, multiple=False, scale=None):
+    def getRep(self, rgbImg, multiple=False, scale=None, bbs=None):
         # print ('getRep entered:')
         # print ('rgbimg shape:{}'.format(rgbImg.shape))
         start = time.time()
@@ -168,16 +168,17 @@ class OpenFaceAnotater(object):
             bwImg = cv2.resize(bwImg, (0,0), fx=scale, fy=scale)
             scale_inv = 1.0 / scale
 
-
-        if multiple:
-            bbs = self.align.getAllFaceBoundingBoxes(bwImg)
-        else:
-            bb1 = self.align.getLargestFaceBoundingBox(bwImg)
-            bbs = [bb1]
-        if len(bbs) == 0 or (not multiple and bb1 is None):
-            raise Exception("Unable to find a face")
-        if self.args.verbose:
-            print("Face detection took {} seconds.".format(time.time() - start))
+        #don't find faces if bounding boxes are provided. Performance Optimization.
+        if bbs is None:
+            if multiple:
+                bbs = self.align.getAllFaceBoundingBoxes(bwImg)
+            else:
+                bb1 = self.align.getLargestFaceBoundingBox(bwImg)
+                bbs = [bb1]
+            if len(bbs) == 0 or (not multiple and bb1 is None):
+                raise Exception("Unable to find a face")
+            if self.args.verbose:
+                print("Face detection took {} seconds.".format(time.time() - start))
 
         reps = []
         for bb in bbs:
