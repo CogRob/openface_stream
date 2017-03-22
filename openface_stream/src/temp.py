@@ -43,7 +43,7 @@ class StreamHandler(BaseHTTPRequestHandler):
                 #     continue
                 img = last_received
                 imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-                imgRGB = openface_anotater.predict(imgRGB, multiple=True)
+                imgRGB = openface_anotater.predict(imgRGB, multiple=True, scale=0.375)
                 jpg = Image.fromarray(imgRGB)
                 tmpFile = StringIO.StringIO()
                 jpg.save(tmpFile,'JPEG')

@@ -16,6 +16,7 @@ np.set_printoptions(precision=2)
 import pandas as pd
 
 import openface
+import dlib
 
 from sklearn.pipeline import Pipeline
 from sklearn.lda import LDA
@@ -110,13 +111,13 @@ class OpenFaceAnotater(object):
         self.le = le
         self.clf = clf
 
-    def predict(self, rgbImg, multiple=False):
+    def predict(self, rgbImg, multiple=False, scale=None):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
 
         try:
-            reps = self.getRep(rgbImg, multiple)
+            reps = self.getRep(rgbImg, multiple, scale)
             # print("reps: ", reps)
             # if len(reps) > 1:
                 # print("List of faces in image from left to right")
@@ -157,12 +158,15 @@ class OpenFaceAnotater(object):
             print str(e)
             return rgbImg
 
-    def getRep(self, rgbImg, multiple=False):
+    def getRep(self, rgbImg, multiple=False, scale=None):
         # print ('getRep entered:')
         # print ('rgbimg shape:{}'.format(rgbImg.shape))
         start = time.time()
 
         bwImg = cv2.cvtColor(rgbImg, cv2.COLOR_RGB2GRAY)
+        if scale is not None:
+            bwImg = cv2.resize(bwImg, (0,0), fx=scale, fy=scale)
+            scale_inv = 1.0 / scale
 
 
         if multiple:
@@ -178,6 +182,12 @@ class OpenFaceAnotater(object):
         reps = []
         for bb in bbs:
             start = time.time()
+            if scale is not None:
+                bb = dlib.rectangle(
+                    left=long(bb.left()*scale_inv),
+                    top=long(bb.top()*scale_inv),
+                    right=long(bb.right()*scale_inv),
+                    bottom=long(bb.bottom()*scale_inv))
             alignedFace = self.align.align(
                 self.args.imgDim,
                 rgbImg,
