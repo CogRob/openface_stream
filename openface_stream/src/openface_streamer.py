@@ -15,20 +15,40 @@ from SocketServer import ThreadingMixIn
 from openface_healper import OpenFaceAnotater
 
 capture = None # Global for capture device
-last_received = None # Global for latest recived line
+last_received = None # Global for latest recived image
+last_predicted = None # Global for latest predicted image
 openface_anotater = None
+
+class PredictionStreamData(object):
+   def __init__(self,img):
+       self.jpg = Image.fromarray(img)
+       tmpFile = StringIO.StringIO()
+       self.jpg.save(tmpFile,'JPEG')
+       self.len = str(tmpFile.len)
 
 def receiving(input, capture):
     global last_received
     t = threading.currentThread() # Get current thread running function
-    while getattr(t, "do_receive", True): # Watch for a stop signal
+    while getattr(t, "do_work", True): # Watch for a stop signal
         try:
-            # retval = capture.grab()
             rc, img = capture.read()
             assert(img is not None)
             last_received = img
         except:
             capture = connect(input)
+
+def predicting(openface_anotater):
+    global last_predicted
+    t = threading.currentThread() # Get current thread running function
+    while getattr(t, "do_work", True): # Watch for a stop signal
+        try:
+            img = last_received
+            imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img, bbs = openface_anotater.predict(imgRGB, multiple=True, scale=0.375)
+            assert(img is not None)
+            last_predicted = PredictionStreamData(img)
+        except:
+            pass
 
 class StreamHandler(BaseHTTPRequestHandler):
     """Handle stream connection."""
@@ -41,20 +61,10 @@ class StreamHandler(BaseHTTPRequestHandler):
         self.end_headers()
         while True:
             try:
-                # rc,img = capture.read()
-                # retval = capture.grab()
-                # rc,img = capture.retrieve()
-                # if not rc:
-                #     continue
-                img = last_received
-                imgRGB=cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-                imgRGB = openface_anotater.predict(imgRGB, multiple=True, scale=0.375)
-                jpg = Image.fromarray(imgRGB)
-                tmpFile = StringIO.StringIO()
-                jpg.save(tmpFile,'JPEG')
+                jpg = last_predicted.jpg
                 self.wfile.write("--jpgboundary")
                 self.send_header('Content-type','image/jpeg')
-                self.send_header('Content-length',str(tmpFile.len))
+                self.send_header('Content-length',last_predicted.len)
                 self.end_headers()
                 jpg.save(self.wfile,'JPEG')
                 time.sleep(0.05)
@@ -128,15 +138,19 @@ def main(argv = sys.argv):
     try:
         server = ThreadedHTTPServer((args.address, args.port), StreamHandler)
         print "server started"
-        t = threading.Thread(target=receiving, args=(args.input, capture,))
-        t.start()
+        tr = threading.Thread(target=receiving, args=(args.input, capture,))
+        tp = threading.Thread(target=predicting, args=(openface_anotater,))
+        tr.start()
+        tp.start()
         print "capture started"
         server.serve_forever()
     except KeyboardInterrupt:
         capture.release()
         server.socket.close()
-        t.do_receive = False
-        t.join()
+        tr.do_work = False
+        tp.do_work = False
+        tr.join()
+        tp.join()
 
 if __name__ == '__main__':
     main()
