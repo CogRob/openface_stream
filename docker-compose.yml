@@ -19,7 +19,7 @@ services:
       OSTREAM_ADDRESS: 0.0.0.0
       OSTREAM_PORT: 8080
       CLASSIFIER_MODEL_PATH: /root/data/classifier.pkl
-    command: src/temp.py --cuda
+    command: src/openface_streamer.py --cuda
 
   resolvable:
     image: mgood/resolvable
