@@ -153,10 +153,10 @@ class OpenFaceAnotater(object):
                                 cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75,
                                 color=(152, 255, 204), thickness=2)
             # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
-            return annotatedImg,bbs
+            return annotatedImg, bbs
         except Exception as e:
             print str(e)
-            return rgbImg
+            return rgbImg, None
 
     def getRep(self, rgbImg, multiple=False, scale=None, bbs=None):
         # print ('getRep entered:')
