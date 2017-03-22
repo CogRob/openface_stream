@@ -2,7 +2,7 @@ services:
   openface_stream:
     build:
       context: openface_stream
-    command: src/temp.py --cuda --verbose
+    command: src/openface_streamer.py --cuda --verbose
     devices:
     - /dev/nvidia0
     - /dev/nvidiactl
@@ -11,6 +11,7 @@ services:
     environment:
       CLASSIFIER_MODEL_PATH: /root/data/classifier.pkl
       ISTREAM_PATH: http://ros_stream:8080/stream?topic=/usb_cam/image_raw
+      # ISTREAM_PATH: http://192.168.222.2:8080/stream?topic=/head_camera/rgb/image_raw
       OSTREAM_ADDRESS: 0.0.0.0
       OSTREAM_PORT: 8080
     volumes:
