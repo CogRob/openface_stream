@@ -15,7 +15,7 @@ services:
     volumes:
     - ./openface_stream/data:/root/data
     ports:
-      - 8080:8080
+      - 8081:8080
   # resolvable:
   #   image: mgood/resolvable
   #   volumes:
