@@ -16,11 +16,15 @@ services:
     - ./openface_stream/data:/root/data
     ports:
       - 8081:8081
-  # resolvable:
-  #   image: mgood/resolvable
-  #   volumes:
-  #   - /var/run/docker.sock:/tmp/docker.sock
-  #   - /etc/resolv.conf:/tmp/resolv.conf
+# networks:
+#   default:
+#     external:
+#       name: bridge
+  resolvable:
+    image: mgood/resolvable
+    volumes:
+    - /var/run/docker.sock:/tmp/docker.sock
+    - /etc/resolv.conf:/tmp/resolv.conf
   # ros_stream:
   #   build:
   #     context: ros_stream
