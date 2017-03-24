@@ -25,7 +25,6 @@ from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.externals import joblib
 
 modelDir = os.path.join('/root/openface', 'models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
@@ -110,7 +109,6 @@ class OpenFaceModel(object):
         nClasses = len(le.classes_)
         print("Training for {} classes.".format(nClasses))
 
-        # clf = SVC(C=1, kernel='linear')
         clf = KNeighborsClassifier(n_neighbors=1)
 
         if args.ldaDim > 0:
@@ -120,9 +118,7 @@ class OpenFaceModel(object):
         clf.fit(features,labelsNum)
 
         for rep,label in zip(features,labels):
-            #print (rep)
             dist,ind = clf.kneighbors(rep)
-            # predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
             predicted_person = le.inverse_transform(ind[0][0])
             print ('predicted person = ',predicted_person)
             print ('nearest neighbor distance',dist[0][0])
@@ -132,7 +128,6 @@ class OpenFaceModel(object):
         print("Saving classifier to '{}'".format(fName))
         with open(fName, 'w') as f:
             pickle.dump((le, clf), f)
-            # joblib.dump((le,clf),f)
 
 if __name__ == '__main__':
 

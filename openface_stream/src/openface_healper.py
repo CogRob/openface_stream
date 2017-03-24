@@ -26,7 +26,6 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.externals import joblib
 
 modelDir = os.path.join('/root/openface', 'models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
