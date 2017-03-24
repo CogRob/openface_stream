@@ -1,0 +1,29 @@
+version: '3'
+services:
+  openface_stream:
+    extra_hosts:
+      - "host:172.17.0.1"
+    build:
+      context: openface_stream
+    command: src/openface_streamer.py
+    environment:
+      CLASSIFIER_MODEL_PATH: /root/data/classifier.pkl
+      ISTREAM_PATH: http://host:8080/stream?topic=/usb_cam/image_raw
+      # ISTREAM_PATH: http://ros_stream:8080/stream?topic=/head_camera/rgb/image_raw
+      OSTREAM_ADDRESS: 0.0.0.0
+      OSTREAM_PORT: 8080
+    volumes:
+    - ./openface_stream/data:/root/data
+    ports:
+      - 80:8080
+  # resolvable:
+  #   image: mgood/resolvable
+  #   volumes:
+  #   - /var/run/docker.sock:/tmp/docker.sock
+  #   - /etc/resolv.conf:/tmp/resolv.conf
+  # ros_stream:
+  #   build:
+  #     context: ros_stream
+  #   command: roslaunch bringup.launch
+  #   devices:
+  #   - /dev/video0:/dev/video0
