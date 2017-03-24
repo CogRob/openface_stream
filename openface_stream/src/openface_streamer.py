@@ -32,7 +32,7 @@ def receiving(input, capture):
     while getattr(t, "do_work", True): # Watch for a stop signal
         try:
             rc, img = capture.read()
-            assert(img is not None)
+            assert(rc is True)
             last_received = img
         except:
             capture = connect(input)
@@ -67,7 +67,7 @@ class StreamHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-length',last_predicted.len)
                 self.end_headers()
                 jpg.save(self.wfile,'JPEG')
-                time.sleep(0.05)
+                time.sleep(0.03)
             except KeyboardInterrupt:
                 break
 
