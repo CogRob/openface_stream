@@ -24,6 +24,8 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.externals import joblib
 
 modelDir = os.path.join('/root/openface', 'models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
@@ -108,7 +110,8 @@ class OpenFaceModel(object):
         nClasses = len(le.classes_)
         print("Training for {} classes.".format(nClasses))
 
-        clf = SVC(C=1, kernel='linear')
+        # clf = SVC(C=1, kernel='linear')
+        clf = KNeighborsClassifier(n_neighbors=1)
 
         if args.ldaDim > 0:
             clf_final = clf
@@ -117,14 +120,18 @@ class OpenFaceModel(object):
         clf.fit(features,labelsNum)
 
         for rep,label in zip(features,labels):
-            predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
+            dist,ind = clf.kneighbors(rep.reshape(-1,1))
+            # predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
+            predicted_person = le.inverse_transform(ind[0][0])
             print ('predicted person = ',predicted_person[0])
+            print ('nearest neighbor distance',dist[0][0])
             print ('actual person = ',label)
 
         fName = "{}/classifier.pkl".format(args.inputDir)
         print("Saving classifier to '{}'".format(fName))
         with open(fName, 'w') as f:
-            pickle.dump((le, clf), f)
+            # pickle.dump((le, clf), f)
+            joblib.dump((le,clf),f)
 
 if __name__ == '__main__':
 
