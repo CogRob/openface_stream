@@ -5,6 +5,7 @@ import argparse
 import cv2
 import os
 import pickle
+import sys
 
 from operator import itemgetter
 
@@ -13,8 +14,6 @@ import numpy as np
 import pandas as pd
 
 import openface
-
-from openface.data import iterImgs
 
 from sklearn.pipeline import Pipeline
 from sklearn.lda import LDA
@@ -25,74 +24,75 @@ from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 
-modelDir = os.path.join('/root/openface', 'models')
-dlibModelDir = os.path.join(modelDir, 'dlib')
-openfaceModelDir = os.path.join(modelDir, 'openface')
+from openface_healper import OpenFaceAnotater
 
-class OpenFaceModel(object):
-    '''Trains a face recognition model from image features'''
-    def getRep(self,imgPath, multiple=False):
-        '''Takes image path as input to give a list of feature vectors, each feature vector corresponds to a face in image.'''
-        start = time.time()
-        bgrImg = cv2.imread(imgPath)
-        if bgrImg is None:
-            raise Exception("Unable to load image: {}".format(imgPath))
+max_faces_found = 5
 
-        rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
+def iterImgs(directory):
+    assert directory is not None
 
-        if args.verbose:
-            print("  + Original size: {}".format(rgbImg.shape))
-        if args.verbose:
-            print("Loading the image took {} seconds.".format(time.time() - start))
+    exts = [".jpg", ".jpeg", ".png"]
 
-        start = time.time()
+    images = dict()
 
-        if multiple:
-            bbs = align.getAllFaceBoundingBoxes(rgbImg)
-        else:
-            bb1 = align.getLargestFaceBoundingBox(rgbImg)
-            bbs = [bb1]
-        if len(bbs) == 0 or (not multiple and bb1 is None):
-            raise Exception("Unable to find a face: {}".format(imgPath))
-        if args.verbose:
-            print("Face detection took {} seconds.".format(time.time() - start))
+    for subdir, dirs, files in os.walk(directory):
+        for path in files:
+            (imageClass, fName) = (os.path.basename(subdir), path)
+            (imageName, ext) = os.path.splitext(fName)
+            if ext.lower() in exts:
+                if imageClass in images:
+                    images[imageClass].append(os.path.join(subdir, fName))
+                else:
+                    images[imageClass] = [os.path.join(subdir, fName)]
+    return images
 
-        reps = []
-        for bb in bbs:
-            start = time.time()
-            alignedFace = align.align(
-                args.imgDim,
-                rgbImg,
-                bb,
-                landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
-            if alignedFace is None:
-                # raise Exception("Unable to align image: {}".format(imgPath))
-                print("Unable to align image: {}".format(imgPath))
-                continue
-            if args.verbose:
-                print("Alignment took {} seconds.".format(time.time() - start))
-                print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
+class TrainHandler(object):
 
-            start = time.time()
-            rep = net.forward(alignedFace)
-            if args.verbose:
-                print("Neural network forward pass took {} seconds.".format(
-                    time.time() - start))
-        #Assumption only one face per photo. Because for a given feature representation we have only one label.
-        return rep
+    def __init__(self, args, openface_trainer):
+        self.args = args
+        self.openface_trainer = openface_trainer
 
     def get_data(self):
         '''Walks through parent directory and fills self.data'''
+        print('Getting Index')
+        # if not args.vip:
+        index = {}
+        index_path = os.path.join(self.args.input, 'index.txt')
+        with open(index_path) as f:
+            lines = f.read().splitlines()
+            for line in lines:
+                person_id, person_name = line.split(' ',1)
+                index[person_id] = person_name
+
         print('Getting Data')
-        imgs = list(iterImgs(args.inputDir))
+        imgs = iterImgs(self.args.input)
         print (imgs)
-        print ('Number of images {}'.format(len(imgs)))
+        print ('Number of People {}'.format(len(imgs)))
         features = []
         labels = []
-        for imgObject in imgs:
-            features.append(self.getRep(imgObject.path,False))
-            labels.append(imgObject.cls)
-            print (imgObject.path,imgObject.cls)
+        for label in imgs:
+            num_faces_found = 0
+            for img in imgs[label]:
+                if num_faces_found >= max_faces_found:
+                    break
+                try:
+                    bgrImg = cv2.imread(img)
+                    if bgrImg is None:
+                        raise Exception("Unable to load image: {}".format(img))
+
+                    r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=0.375)[0]
+                    rep = r[1] #.reshape(1, -1)
+                    features.append(rep)
+                    # if args.vip:
+                    #     labels.append(label)
+                    #     print (label,img)
+                    # else:
+                    labels.append(index[label])
+                    print (index[label],img)
+                    num_faces_found += 1
+                except Exception as e:
+                    print str(e)
+                    # pass
         print ('Created features and labels')
         return features,labels
 
@@ -100,7 +100,8 @@ class OpenFaceModel(object):
         '''Trains and saves classifier'''
         print 'Start Trainning'
         features,labels = self.get_data()
-        print labels
+        # print("labels", labels)
+        # print("features", features)
         le = LabelEncoder().fit(labels)
         print le
         labelsNum = le.transform(labels)
@@ -110,46 +111,50 @@ class OpenFaceModel(object):
 
         clf = SVC(C=1, kernel='linear')
 
-        if args.ldaDim > 0:
-            clf_final = clf
-            clf = Pipeline([('lda', LDA(n_components=args.ldaDim)),('clf', clf_final)])
+        # if args.ldaDim > 0:
+        #     clf_final = clf
+        #     clf = Pipeline([('lda', LDA(n_components=args.ldaDim)),('clf', clf_final)])
 
         clf.fit(features,labelsNum)
 
-        for rep,label in zip(features,labels):
-            predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
-            print ('predicted person = ',predicted_person[0])
-            print ('actual person = ',label)
+        # for rep,label in zip(features,labels):
+        #     predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
+        #     print ('predicted person = ',predicted_person[0])
+        #     print ('actual person = ',label)
 
-        fName = "{}/classifier.pkl".format(args.inputDir)
+        fName = "{}/classifier.pkl".format(self.args.input)
         print("Saving classifier to '{}'".format(fName))
         with open(fName, 'w') as f:
             pickle.dump((le, clf), f)
 
+class TrainArgParser(argparse.ArgumentParser):
+    """Argument parser class"""
+
+    def set(self):
+        """Setup parser"""
+
+        self.add_argument(
+            '-i', '--input',
+            action='store',
+            default=os.environ.get('IDIR_PATH', None),
+            help='path to input dir (FILE_PATH)')
+        self.add_argument(
+            '--version',
+            action='version',
+            version='%(prog)s 0.0')
+
+def main(argv = sys.argv):
+    arg_parser = TrainArgParser(
+        prog='openface_trainer',
+        description='OpenFace Trainer')
+    arg_parser.set()
+    args, argv = arg_parser.parse_known_args(argv)
+
+    # global openface_trainer
+    openface_trainer = OpenFaceAnotater(argv)
+
+    train_handler = TrainHandler(args, openface_trainer)
+    train_handler.train()
+
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('inputDir', type=str, help="Input image directory.")
-    parser.add_argument('--dlibFacePredictor', type=str, help="Path to dlib's face predictor.",
-                        default=os.path.join(dlibModelDir, "shape_predictor_68_face_landmarks.dat"))
-    parser.add_argument(
-        '--networkModel',
-        type=str,
-        help="Path to Torch network model.",
-        default=os.path.join(
-            openfaceModelDir,
-            'nn4.small2.v1.t7'))
-    parser.add_argument('--imgDim', type=int,
-                        help="Default image dimension.", default=96)
-    parser.add_argument('--cuda', action='store_true')
-    parser.add_argument('--verbose', action='store_true')
-    parser.add_argument('--ldaDim', type=int, default=-1)
-
-    #args, align and net are global to the script because they are in the main module
-    args = parser.parse_args()
-    align = openface.AlignDlib(args.dlibFacePredictor)
-    net = openface.TorchNeuralNet(args.networkModel, imgDim=args.imgDim,
-                                  cuda=args.cuda)
-
-    OPM = OpenFaceModel()
-    OPM.train()
+    main()

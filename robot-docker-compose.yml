@@ -13,18 +13,18 @@ services:
       OSTREAM_ADDRESS: 0.0.0.0
       OSTREAM_PORT: 8081
     volumes:
-    - ./openface_stream/data:/root/data
+    - ~/Desktop/ftp/Check-In:/root/data
     ports:
       - 8081:8081
 # networks:
 #   default:
 #     external:
 #       name: bridge
-  resolvable:
-    image: mgood/resolvable
-    volumes:
-    - /var/run/docker.sock:/tmp/docker.sock
-    - /etc/resolv.conf:/tmp/resolv.conf
+  # resolvable:
+  #   image: mgood/resolvable
+  #   volumes:
+  #   - /var/run/docker.sock:/tmp/docker.sock
+  #   - /etc/resolv.conf:/tmp/resolv.conf
   # ros_stream:
   #   build:
   #     context: ros_stream

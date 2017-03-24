@@ -98,7 +98,10 @@ class OpenFaceAnotater(object):
             imgDim=self.args.imgDim,
             cuda=self.args.cuda)
 
-        self.load(self.args.classifierModel)
+        try:
+            self.load(self.args.classifierModel)
+        except:
+            print("No classifierModel loaded")
 
         if self.args.verbose:
             print("Loading the dlib and OpenFace models took {} seconds.".format(
