@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import time
 import argparse
@@ -120,18 +120,19 @@ class OpenFaceModel(object):
         clf.fit(features,labelsNum)
 
         for rep,label in zip(features,labels):
-            dist,ind = clf.kneighbors(rep.reshape(-1,1))
+            #print (rep)
+            dist,ind = clf.kneighbors(rep)
             # predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
             predicted_person = le.inverse_transform(ind[0][0])
-            print ('predicted person = ',predicted_person[0])
+            print ('predicted person = ',predicted_person)
             print ('nearest neighbor distance',dist[0][0])
             print ('actual person = ',label)
 
         fName = "{}/classifier.pkl".format(args.inputDir)
         print("Saving classifier to '{}'".format(fName))
         with open(fName, 'w') as f:
-            # pickle.dump((le, clf), f)
-            joblib.dump((le,clf),f)
+            pickle.dump((le, clf), f)
+            # joblib.dump((le,clf),f)
 
 if __name__ == '__main__':
 
