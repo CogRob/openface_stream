@@ -26,6 +26,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.externals import joblib
 
 modelDir = os.path.join('/root/openface', 'models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
@@ -107,7 +108,8 @@ class OpenFaceAnotater(object):
 
     def load(self, classifierModel):
         with open(classifierModel, 'r') as f:
-            (le, clf) = pickle.load(f)
+            #(le, clf) = pickle.load(f)
+            (le,clf) = joblib.load(f)
         self.le = le
         self.clf = clf
 
@@ -115,6 +117,8 @@ class OpenFaceAnotater(object):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
+        #http://cmusatyalab.github.io/openface/demo-2-comparison/
+        threshold_unknown = 0.99
 
         try:
             reps = self.getRep(rgbImg, multiple, scale, bbs)
@@ -127,7 +131,12 @@ class OpenFaceAnotater(object):
                 bb = r[2] #bounding box
                 landmarks = r[3] #landmarks
                 start = time.time()
-                person = self.le.inverse_transform(self.clf.predict(rep))[0]
+                dist,ind = self.clf.kneighbors(rep)
+                if dist[0][0]>threshold_unknown:
+                    person = 'Unknown'
+                else:
+                    person = self.le.inverse_transform(ind[0][0])
+                # person = self.le.inverse_transform(self.clf.predict(rep))[0]
                 if self.args.verbose:
                     print("Prediction took {} seconds.".format(time.time() - start))
                     if multiple:
