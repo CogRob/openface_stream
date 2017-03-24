@@ -155,7 +155,7 @@ class OpenFaceAnotater(object):
             # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
             return annotatedImg, bbs
         except Exception as e:
-            print str(e)
+            # print str(e)
             return rgbImg, None
 
     def getRep(self, rgbImg, multiple=False, scale=None, bbs=None):
@@ -178,7 +178,7 @@ class OpenFaceAnotater(object):
             if len(bbs) == 0 or (not multiple and bb1 is None):
                 if self.args.verbose:
                     print("Unable to find a face")
-                raise Exception()
+                raise Exception("Unable to find a face")
             if self.args.verbose:
                 print("Face detection took {} seconds.".format(time.time() - start))
 
