@@ -33,18 +33,32 @@ def iterImgs(directory):
 
     exts = [".jpg", ".jpeg", ".png"]
 
+    extz = [".npy"]
+
     images = dict()
+    repz = dict()
 
     for subdir, dirs, files in os.walk(directory):
+        skip_class = False
         for path in files:
             (imageClass, fName) = (os.path.basename(subdir), path)
             (imageName, ext) = os.path.splitext(fName)
-            if ext.lower() in exts:
-                if imageClass in images:
-                    images[imageClass].append(os.path.join(subdir, fName))
+            if ext.lower() in extz:
+                if imageClass in repz:
+                    repz[imageClass].append(os.path.join(subdir, fName))
                 else:
-                    images[imageClass] = [os.path.join(subdir, fName)]
-    return images
+                    repz[imageClass] = [os.path.join(subdir, fName)]
+                skip_class = True
+        if not skip_class:
+            for path in files:
+                (imageClass, fName) = (os.path.basename(subdir), path)
+                (imageName, ext) = os.path.splitext(fName)
+                if ext.lower() in exts:
+                    if imageClass in images:
+                        images[imageClass].append(os.path.join(subdir, fName))
+                    else:
+                        images[imageClass] = [os.path.join(subdir, fName)]
+    return images, repz
 
 class TrainHandler(object):
 
@@ -65,11 +79,23 @@ class TrainHandler(object):
                     index[person_id] = person_name
 
         print('Getting Data')
-        imgs = iterImgs(self.args.input)
+        imgs, repz = iterImgs(self.args.input)
         print (imgs)
         print ('Number of People {}'.format(len(imgs)))
         features = []
         labels = []
+        for label in repz:
+            for rep_path in repz[label]:
+                rep = np.load(rep_path)
+                features.append(rep)
+                if self.args.vip:
+                    labels.append(label)
+                    print (label,rep_path)
+                else:
+                    labels.append(index[label])
+                    print (index[label],rep_path)
+
+        print ('Loaded previous features and labels')
         for label in imgs:
             num_faces_found = 0
             for img in imgs[label]:
@@ -83,6 +109,9 @@ class TrainHandler(object):
                     r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=None)[0]
                     # r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=0.375)[0]
                     rep = r[1] #.reshape(1, -1)
+                    (imageName, ext) = os.path.splitext(img)
+                    fName = imageName
+                    np.save(fName,rep)
                     features.append(rep)
                     if self.args.vip:
                         labels.append(label)
