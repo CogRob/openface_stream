@@ -55,14 +55,14 @@ class TrainHandler(object):
     def get_data(self):
         '''Walks through parent directory and fills self.data'''
         print('Getting Index')
-        # if not args.vip:
-        index = {}
-        index_path = os.path.join(self.args.input, 'index.txt')
-        with open(index_path) as f:
-            lines = f.read().splitlines()
-            for line in lines:
-                person_id, person_name = line.split(' ',1)
-                index[person_id] = person_name
+        if not self.args.vip:
+            index = {}
+            index_path = os.path.join(self.args.input, 'index.txt')
+            with open(index_path) as f:
+                lines = f.read().splitlines()
+                for line in lines:
+                    person_id, person_name = line.split(' ',1)
+                    index[person_id] = person_name
 
         print('Getting Data')
         imgs = iterImgs(self.args.input)
@@ -80,15 +80,16 @@ class TrainHandler(object):
                     if bgrImg is None:
                         raise Exception("Unable to load image: {}".format(img))
 
-                    r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=0.375)[0]
+                    r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=None)[0]
+                    # r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=0.375)[0]
                     rep = r[1] #.reshape(1, -1)
                     features.append(rep)
-                    # if args.vip:
-                    #     labels.append(label)
-                    #     print (label,img)
-                    # else:
-                    labels.append(index[label])
-                    print (index[label],img)
+                    if self.args.vip:
+                        labels.append(label)
+                        print (label,img)
+                    else:
+                        labels.append(index[label])
+                        print (index[label],img)
                     num_faces_found += 1
                 except Exception as e:
                     print str(e)
@@ -142,6 +143,9 @@ class TrainArgParser(argparse.ArgumentParser):
             '--version',
             action='version',
             version='%(prog)s 0.0')
+        self.add_argument(
+           '--vip',
+           action='store_true')
 
 def main(argv = sys.argv):
     arg_parser = TrainArgParser(
