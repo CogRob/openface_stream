@@ -114,13 +114,15 @@ class OpenFaceAnotater(object):
         self.le = le
         self.clf = clf
 
-    def predict(self, rgbImg, multiple=False, scale=None, bbs=None):
+    def predict(self, rgbImg, multiple=False, scale=None, bbs=[]):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
+        #http://cmusatyalab.github.io/openface/demo-2-comparison/
+        threshold_unknown = 0.99
 
         try:
-            reps = self.getRep(rgbImg, multiple, scale, bbs)
+            reps = self.getRep(rgbImg, bbs, multiple, scale)
             # print("reps: ", reps)
             # if len(reps) > 1:
                 # print("List of faces in image from left to right")
@@ -130,7 +132,14 @@ class OpenFaceAnotater(object):
                 bb = r[2] #bounding box
                 landmarks = r[3] #landmarks
                 start = time.time()
-                person = self.le.inverse_transform(self.clf.predict(rep))[0]
+                dist,ind = self.clf.kneighbors(rep)
+                if dist[0][0]>threshold_unknown:
+                    print ('Unknown')
+                    person = 'Unknown'
+                else:
+                    person = self.le.inverse_transform(ind[0][0])
+                    print (person)
+                # person = self.le.inverse_transform(self.clf.predict(rep))[0]
                 if self.args.verbose:
                     print("Prediction took {} seconds.".format(time.time() - start))
                     if multiple:
@@ -158,10 +167,10 @@ class OpenFaceAnotater(object):
             # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
             return annotatedImg, bbs
         except Exception as e:
-            # print str(e)
+            print str(e)
             return rgbImg, None
 
-    def getRep(self, rgbImg, multiple=False, scale=None, bbs=None):
+    def getRep(self, rgbImg, bbs_final, multiple=False, scale=None):
         # print ('getRep entered:')
         # print ('rgbimg shape:{}'.format(rgbImg.shape))
         start = time.time()
@@ -172,7 +181,7 @@ class OpenFaceAnotater(object):
             scale_inv = 1.0 / scale
 
         #don't find faces if bounding boxes are provided. Performance Optimization.
-        if bbs is None:
+        if len(bbs_final)==0:
             if multiple:
                 bbs = self.align.getAllFaceBoundingBoxes(bwImg)
             else:
@@ -213,5 +222,6 @@ class OpenFaceAnotater(object):
                 print("Neural network forward pass took {} seconds.".format(
                     time.time() - start))
             reps.append((bb.center().x, rep, bb, landmarks)) #added the bounding box and landmarks
+            bbs_final.append(bb)
         sreps = sorted(reps, key=lambda x: x[0])
         return sreps

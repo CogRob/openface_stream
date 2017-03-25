@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import time
 import argparse
@@ -23,6 +23,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.mixture import GMM
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
 
 from openface_healper import OpenFaceAnotater
 
@@ -139,7 +140,7 @@ class TrainHandler(object):
         nClasses = len(le.classes_)
         print("Training for {} classes.".format(nClasses))
 
-        clf = SVC(C=1, kernel='linear')
+        clf = KNeighborsClassifier(n_neighbors=1)
 
         # if args.ldaDim > 0:
         #     clf_final = clf
@@ -148,8 +149,10 @@ class TrainHandler(object):
         clf.fit(features,labelsNum)
 
         # for rep,label in zip(features,labels):
-        #     predicted_person = le.inverse_transform(clf.predict(rep.reshape(1,-1)))
-        #     print ('predicted person = ',predicted_person[0])
+        #     dist,ind = clf.kneighbors(rep)
+        #     predicted_person = le.inverse_transform(ind[0][0])
+        #     print ('predicted person = ',predicted_person)
+        #     print ('nearest neighbor distance',dist[0][0])
         #     print ('actual person = ',label)
 
         fName = "{}/classifier.pkl".format(self.args.input)
