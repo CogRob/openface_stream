@@ -27,7 +27,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from openface_healper import OpenFaceAnotater
 
-max_faces_found = 5
+# max_faces_found = 5
 
 def iterImgs(directory):
     assert directory is not None
@@ -55,15 +55,15 @@ class TrainHandler(object):
 
     def get_data(self):
         '''Walks through parent directory and fills self.data'''
-        print('Getting Index')
-        if not self.args.vip:
-            index = {}
-            index_path = os.path.join(self.args.input, 'index.txt')
-            with open(index_path) as f:
-                lines = f.read().splitlines()
-                for line in lines:
-                    person_id, person_name = line.split(' ',1)
-                    index[person_id] = person_name
+        # print('Getting Index')
+        # if not self.args.vip:
+        #     index = {}
+        #     index_path = os.path.join(self.args.input, 'index.txt')
+        #     with open(index_path) as f:
+        #         lines = f.read().splitlines()
+        #         for line in lines:
+        #             person_id, person_name = line.split(' ',1)
+        #             index[person_id] = person_name
 
         print('Getting Data')
         imgs = iterImgs(self.args.input)
@@ -74,23 +74,24 @@ class TrainHandler(object):
         for label in imgs:
             num_faces_found = 0
             for img in imgs[label]:
-                if num_faces_found >= max_faces_found:
-                    break
+                # if num_faces_found >= max_faces_found:
+                #     break
                 try:
                     bgrImg = cv2.imread(img)
                     if bgrImg is None:
                         raise Exception("Unable to load image: {}".format(img))
 
-                    r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=None)[0]
+                    r = self.openface_trainer.getRep(bgrImg, [], multiple=False, scale=None)[0]
                     # r = self.openface_trainer.getRep(bgrImg, multiple=False, scale=0.375)[0]
                     rep = r[1] #.reshape(1, -1)
+                    # rep = r[1].reshape(1,-1)
                     features.append(rep)
-                    if self.args.vip:
-                        labels.append(label)
-                        print (label,img)
-                    else:
-                        labels.append(index[label])
-                        print (index[label],img)
+                    # if self.args.vip:
+                    labels.append(label)
+                    print (label,img)
+                    # else:
+                        # labels.append(index[label])
+                        # print (index[label],img)
                     num_faces_found += 1
                 except Exception as e:
                     print str(e)
@@ -102,8 +103,9 @@ class TrainHandler(object):
         '''Trains and saves classifier'''
         print 'Start Trainning'
         features,labels = self.get_data()
+        print 'Feature shape',len(features)
         # print("labels", labels)
-        # print("features", features)
+        # print "features",features
         le = LabelEncoder().fit(labels)
         print le
         labelsNum = le.transform(labels)
@@ -119,12 +121,17 @@ class TrainHandler(object):
 
         clf.fit(features,labelsNum)
 
-        # for rep,label in zip(features,labels):
-        #     dist,ind = clf.kneighbors(rep)
-        #     predicted_person = le.inverse_transform(ind[0][0])
-        #     print ('predicted person = ',predicted_person)
-        #     print ('nearest neighbor distance',dist[0][0])
-        #     print ('actual person = ',label)
+        for rep,label in zip(features,labels):
+            dist,ind = clf.kneighbors(rep.reshape(1,-1))
+            # print dist[0]
+            # print ind[0]
+            nn_index = ind[0][0]
+            nn_label = labels[nn_index]
+            print 'nn index',nn_index
+            print 'nearest neigbor',nn_label
+            print 'actual person = ',label
+            print 'nearest neighbor distance',dist[0][0]
+            
 
         fName = "{}/classifier.pkl".format(self.args.input)
         print("Saving classifier to '{}'".format(fName))

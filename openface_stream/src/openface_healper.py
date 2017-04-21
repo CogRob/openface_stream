@@ -76,7 +76,7 @@ class OpenFaceArgParser(argparse.ArgumentParser):
             action='store_true')
         self.add_argument(
             '--verbose',
-            action='store_true')
+        action='store_true')
 
 class OpenFaceAnotater(object):
 
@@ -114,114 +114,144 @@ class OpenFaceAnotater(object):
         self.le = le
         self.clf = clf
 
-    def predict(self, rgbImg, multiple=False, scale=None, bbs=[]):
+    def predict(self, rgbImg, bbs, multiple=False, scale=None):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
         #http://cmusatyalab.github.io/openface/demo-2-comparison/
-        threshold_unknown = 0.99
+        threshold_unknown = 0.8
 
-        try:
-            reps = self.getRep(rgbImg, bbs, multiple, scale)
-            # print("reps: ", reps)
-            # if len(reps) > 1:
-                # print("List of faces in image from left to right")
-            for r in reps:
-                rep = r[1].reshape(1, -1)
-                bbx = r[0]
-                bb = r[2] #bounding box
-                landmarks = r[3] #landmarks
-                start = time.time()
-                dist,ind = self.clf.kneighbors(rep)
-                if dist[0][0]>threshold_unknown:
-                    print ('Unknown')
-                    person = 'Unknown'
+        # try:
+        reps = self.getRep(rgbImg, bbs, multiple, scale) #bbs is passed by reference
+        # print("reps: ", reps)
+        # if len(reps) > 1:
+            # print("List of faces in image from left to right")
+        for r in reps:
+            rep = r[1].reshape(1, -1)
+            bbx = r[0]
+            bb = r[2] #bounding box
+            landmarks = r[3] #landmarks
+            start = time.time()
+            dist,ind = self.clf.kneighbors(rep)
+            if dist[0][0]>threshold_unknown:
+                # print ('Unknown')
+                person = 'Unknown'
+            else:
+                person = self.le.inverse_transform(self.clf.predict(rep))[0]
+                # print (person)
+            if self.args.verbose:
+                print("Prediction took {} seconds.".format(time.time() - start))
+                if multiple:
+                    print("Predict {} @ x={}".format(
+                        person,
+                        bbx))
                 else:
-                    person = self.le.inverse_transform(ind[0][0])
-                    print (person)
-                # person = self.le.inverse_transform(self.clf.predict(rep))[0]
+                    print("Predict {}".format(
+                        person))
+            if isinstance(self.clf, GMM):
+                dist = np.linalg.norm(rep - self.clf.means_[maxI])
                 if self.args.verbose:
-                    print("Prediction took {} seconds.".format(time.time() - start))
-                    if multiple:
-                        print("Predict {} @ x={}".format(
-                            person,
-                            bbx))
-                    else:
-                        print("Predict {}".format(
-                            person))
-                if isinstance(self.clf, GMM):
-                    dist = np.linalg.norm(rep - self.clf.means_[maxI])
-                    if self.args.verbose:
-                        print("  + Distance from the mean: {}".format(dist))
+                    print("  + Distance from the mean: {}".format(dist))
 
-                #code for annotated bounding box
-                bl = (bb.left(), bb.bottom())
-                tr = (bb.right(), bb.top())
-                cv2.rectangle(annotatedImg, bl, tr, color=(153, 255, 204),thickness=3)
-                for p in openface.AlignDlib.OUTER_EYES_AND_NOSE:
-                    cv2.circle(annotatedImg, center=landmarks[p], radius=3,
-                                   color=(102, 204, 255), thickness=-1)
-                cv2.putText(annotatedImg, person, (bb.left(), bb.top() - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75,
-                                color=(152, 255, 204), thickness=2)
-            # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
-            return annotatedImg, bbs
-        except Exception as e:
-            print str(e)
-            return rgbImg, None
+            #code for annotated bounding box
+            bl = (bb.left(), bb.bottom())
+            tr = (bb.right(), bb.top())
+            cv2.rectangle(annotatedImg, bl, tr, color=(153, 255, 204),thickness=3)
+            for p in openface.AlignDlib.OUTER_EYES_AND_NOSE:
+                cv2.circle(annotatedImg, center=landmarks[p], radius=3,
+                               color=(102, 204, 255), thickness=-1)
+            cv2.putText(annotatedImg, person, (bb.left(), bb.top() - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.75,
+                            color=(152, 255, 204), thickness=2)
+        # annotatedImgBgr = cv2.cvtColor(annotatedImg, cv2.COLOR_RGB2BGR)
+        return annotatedImg
+        # except Exception as e:
+            # print str(e)
+            # return rgbImg, None
 
-    def getRep(self, rgbImg, bbs_final, multiple=False, scale=None):
+    def getRep(self, rgbImg, bbs, multiple=False, scale=None):
         # print ('getRep entered:')
         # print ('rgbimg shape:{}'.format(rgbImg.shape))
         start = time.time()
 
+        reps = []
+        #Possible performance optimization of grayscale. Didn't affect at all.
         bwImg = cv2.cvtColor(rgbImg, cv2.COLOR_RGB2GRAY)
+        #Performance Optimization. Finding bounding boxes in scaled down image
         if scale is not None:
             bwImg = cv2.resize(bwImg, (0,0), fx=scale, fy=scale)
             scale_inv = 1.0 / scale
 
         #don't find faces if bounding boxes are provided. Performance Optimization.
-        if len(bbs_final)==0:
+        if len(bbs)==0:    
             if multiple:
-                bbs = self.align.getAllFaceBoundingBoxes(bwImg)
+                bbs.extend(self.align.getAllFaceBoundingBoxes(bwImg))
             else:
-                bb1 = self.align.getLargestFaceBoundingBox(bwImg)
-                bbs = [bb1]
-            if len(bbs) == 0 or (not multiple and bb1 is None):
+                bbs.append(self.align.getLargestFaceBoundingBox(bwImg))
+            
+            if len(bbs) == 0:
                 if self.args.verbose:
                     print("Unable to find a face")
-                raise Exception("Unable to find a face")
+                # raise Exception("Unable to find a face")
+            
             if self.args.verbose:
                 print("Face detection took {} seconds.".format(time.time() - start))
+            
+            temp = []
+            for bb in bbs:
+                start = time.time()
+                if scale is not None:
+                    bb = dlib.rectangle(
+                        left=long(bb.left()*scale_inv),
+                        top=long(bb.top()*scale_inv),
+                        right=long(bb.right()*scale_inv),
+                        bottom=long(bb.bottom()*scale_inv))
+                alignedFace = self.align.align(
+                    self.args.imgDim,
+                    rgbImg,
+                    bb,
+                    landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
 
-        reps = []
-        for bb in bbs:
-            start = time.time()
-            if scale is not None:
-                bb = dlib.rectangle(
-                    left=long(bb.left()*scale_inv),
-                    top=long(bb.top()*scale_inv),
-                    right=long(bb.right()*scale_inv),
-                    bottom=long(bb.bottom()*scale_inv))
-            alignedFace = self.align.align(
-                self.args.imgDim,
-                rgbImg,
-                bb,
-                landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+                # print("alignedFace: ", alignedFace)
+                if alignedFace is None:
+                    raise Exception("Unable to align image")
+                if self.args.verbose:
+                    print("Alignment took {} seconds.".format(time.time() - start))
+                    print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
+                landmarks = self.align.findLandmarks(rgbImg,bb)
+                start = time.time()
+                rep = self.net.forward(alignedFace)
+                if self.args.verbose:
+                    print("Neural network forward pass took {} seconds.".format(
+                        time.time() - start))
+                reps.append((bb.center().x, rep, bb, landmarks)) #added the bounding box and landmarks
+                temp.append(bb)
+            
+            #empty bbs as it currently contains bounding boxes on downscaled image and then add all boxes from temp
+            del bbs[:]
+            bbs.extend(temp)
+        else:
+            for bb in bbs:
+                start = time.time()
+                alignedFace = self.align.align(
+                    self.args.imgDim,
+                    rgbImg,
+                    bb,
+                    landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
 
-            # print("alignedFace: ", alignedFace)
-            if alignedFace is None:
-                raise Exception("Unable to align image")
-            if self.args.verbose:
-                print("Alignment took {} seconds.".format(time.time() - start))
-                print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
-            landmarks = self.align.findLandmarks(rgbImg,bb)
-            start = time.time()
-            rep = self.net.forward(alignedFace)
-            if self.args.verbose:
-                print("Neural network forward pass took {} seconds.".format(
-                    time.time() - start))
-            reps.append((bb.center().x, rep, bb, landmarks)) #added the bounding box and landmarks
-            bbs_final.append(bb)
+                # print("alignedFace: ", alignedFace)
+                if alignedFace is None:
+                    raise Exception("Unable to align image")
+                if self.args.verbose:
+                    print("Alignment took {} seconds.".format(time.time() - start))
+                    print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
+                landmarks = self.align.findLandmarks(rgbImg,bb)
+                start = time.time()
+                rep = self.net.forward(alignedFace)
+                if self.args.verbose:
+                    print("Neural network forward pass took {} seconds.".format(
+                        time.time() - start))
+                reps.append((bb.center().x, rep, bb, landmarks)) #added the bounding box and landmarks
+                
         sreps = sorted(reps, key=lambda x: x[0])
         return sreps
