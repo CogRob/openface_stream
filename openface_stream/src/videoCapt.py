@@ -24,10 +24,7 @@ def main(argv = sys.argv):
 			# Our operations on the frame come here
 			bbs = []
 			img = openface_anotater.predict(frame, bbs, multiple=True, scale=0.375)
-			print type(img)
 			out.write(img)
-			# Display the resulting frame
-			# cv2.imshow('frame',imgRGB)
 			if cv2.waitKey(20) & 0xFF == ord('q'):
 				break
 		else:
