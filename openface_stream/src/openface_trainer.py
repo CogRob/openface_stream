@@ -121,17 +121,13 @@ class TrainHandler(object):
 
         clf.fit(features,labelsNum)
 
+        feature_file = '{}/features'.format(self.args.input)
+        labels_file = '{}/labelsNum'.format(self.args.input)
+        np.save(feature_file,features)
+        np.save(labels_file,labelsNum)
+
         for rep,label in zip(features,labels):
-            dist,ind = clf.kneighbors(rep.reshape(1,-1))
-            # print dist[0]
-            # print ind[0]
-            nn_index = ind[0][0]
-            nn_label = labels[nn_index]
-            print 'nn index',nn_index
-            print 'nearest neigbor',nn_label
-            print 'actual person = ',label
-            print 'nearest neighbor distance',dist[0][0]
-            
+            dist,ind = clf.kneighbors(rep.reshape(1,-1))   
 
         fName = "{}/classifier.pkl".format(self.args.input)
         print("Saving classifier to '{}'".format(fName))
