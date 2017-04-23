@@ -77,6 +77,17 @@ class OpenFaceArgParser(argparse.ArgumentParser):
         self.add_argument(
             '--verbose',
         action='store_true')
+        self.add_argument(
+            '--features',
+            type=str,
+            help="Path to Features numpy.",
+            default='/root/data/features.npy')
+        self.add_argument(
+            '--labelsNum',
+            type=str,
+            help='Path to labelsNum numpy',
+            default='/root/data/labelsNum.npy'
+            )
 
 class OpenFaceAnotater(object):
 
@@ -102,6 +113,7 @@ class OpenFaceAnotater(object):
             self.load(self.args.classifierModel)
         except:
             print("No classifierModel loaded")
+        self.load_features()
 
         if self.args.verbose:
             print("Loading the dlib and OpenFace models took {} seconds.".format(
@@ -114,12 +126,23 @@ class OpenFaceAnotater(object):
         self.le = le
         self.clf = clf
 
+    def load_features(self):
+        try:
+            self.features = np.load(self.args.features)
+        except:
+            print('No feature file specified')
+        try:
+            self.labelsNum = np.load(self.args.labelsNum)
+        except:
+            print('No labelsNum specified')
+
     def predict(self, rgbImg, bbs, multiple=False, scale=None):
         # bgrImg = img
         # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
         annotatedImg = np.copy(rgbImg)
         #http://cmusatyalab.github.io/openface/demo-2-comparison/
-        threshold_unknown = 0.8
+        #threshold_unknown = 0.8
+        dot_prod_threshold_unknown = 0.6
 
         # try:
         reps = self.getRep(rgbImg, bbs, multiple, scale) #bbs is passed by reference
@@ -133,12 +156,25 @@ class OpenFaceAnotater(object):
             landmarks = r[3] #landmarks
             start = time.time()
             dist,ind = self.clf.kneighbors(rep)
-            if dist[0][0]>threshold_unknown:
-                # print ('Unknown')
-                person = 'Unknown'
-            else:
+            
+            # Logic 1:
+            # #threshold logic on nearest neigbor distance
+            # if dist[0][0]>threshold_unknown:
+            #     # print ('Unknown')
+            #     person = 'Unknown'
+            # else:
+            #     person = self.le.inverse_transform(self.clf.predict(rep))[0]
+            #     # print (person)
+
+            #Logic
+            nn_product = np.vdot(rep,self.features[ind[0]])
+            print 'NN dot product',nn_product
+            print 'Nearest neigbor is',self.le.inverse_transform(self.clf.predict(rep))[0]
+            if nn_product>dot_prod_threshold_unknown:
                 person = self.le.inverse_transform(self.clf.predict(rep))[0]
-                # print (person)
+            else:
+                person = 'Unknown'
+
             if self.args.verbose:
                 print("Prediction took {} seconds.".format(time.time() - start))
                 if multiple:
